@@ -24,7 +24,7 @@ def printPdfFormat():
 
 noLeadSpaceRows = [row.strip() for row in selectRows]
 cleanedRows = [' '.join(row.split()) for row in noLeadSpaceRows]
-courseCodeStartingIndex = []
+courseCodeStartIndices = []
 courseCode = ''
 # Loop to check first word of every row, which implies check first collection of chars
 for idx, row in enumerate(cleanedRows):
@@ -38,10 +38,13 @@ for idx, row in enumerate(cleanedRows):
     # if course code was found, store it
     if (courseCode in courseCodes):
         # save row indices that belong to a course
-        courseCodeStartingIndex.append(idx)
+        courseCodeStartIndices.append(idx)
     # Reset courseCode string to prepare for another check next iteration
     # if we didn't find it then we still have to reset it
     courseCode = ''
+
+lastRowIdx = len(cleanedRows)-1
+courseCodeIndices = courseCodeStartIndices + [lastRowIdx]
 
 #cols = ["Subject Course", "Title", "Section Code", "Type", "Instructor", "Grade Option", "Units", "Days", "Time", "BLDG", "Room", "Status", "Action"]
 finalFormattedRows = []
@@ -93,6 +96,13 @@ for row in selectRows:
         cleanCols.append(element.strip())
     finalFormattedRows.append(cleanCols)
 
+def getCourseNames():
+    courseNames = []
+    for index in courseCodeStartIndices:
+        courseNames.append(finalFormattedRows[index][0])
+    return courseNames
+
+print(getCourseNames())
 def printCsvFormat():        
     for row in finalFormattedRows:
         print(row)
@@ -117,13 +127,14 @@ def createStartAndEndTimes(timeString):
     return startTime, endTime
 
 def standardToMilitaryTime(timeToConvert):
-    if timeToConvert[0] != 0:
+    # add a 0 in front of AM start times
+    if timeToConvert[1] == ':':
         timeToConvert = "0" + timeToConvert
     if timeToConvert[-1] == 'a':
-        timeToConvert = timeToConvert[:-1]
+        timeToConvert = timeToConvert[:-1] #shaves off 'a' from time string
         timeToConvert = timeToConvert + "AM"
     if timeToConvert[-1] == 'p':
-        timeToConvert = timeToConvert[:-1]
+        timeToConvert = timeToConvert[:-1] #shaves off 'p' from time string
         timeToConvert = timeToConvert + "PM"
 
     standardTime = dt.strptime(timeToConvert, '%I:%M%p')
@@ -133,14 +144,17 @@ def standardToMilitaryTime(timeToConvert):
 def formatStartTime(startTime):
     startHour = ''
     startMinute = ''
-
+    print(startTime)
     if startTime[-1] == 'p':
         startTime = standardToMilitaryTime(startTime)
         startHour = startTime[:-3]
         startMinute = startTime[-2:]
     else:
         startHour = startTime[:-4]
+        startTime = startTime[:-1] #shave off 'a' for am start time classes
         startMinute = startTime[-2:]
+    print(startHour)
+    print(startMinute)
     return startHour, startMinute
 
 def formatEndTime(endTime):
@@ -152,6 +166,7 @@ def formatEndTime(endTime):
         endMinute = endTime[-2:]
     else:
         endHour = endTime[:-4]
+        endTime = endTime[:-1] # shave off 'a' for am start time classes
         endMinute = endTime[-2:]
     return endHour, endMinute
 
@@ -180,47 +195,65 @@ midtermOne = Event()
 midtermTwo = Event()
 
 # hard coded lecture name, and start/end time
-lecture.name = finalFormattedRows[0][0] + " Lecture"
-timeString = finalFormattedRows[0][8]
+#lecture.name = finalFormattedRows[0][0] + " Lecture"
+
 
 # create datetime strings for DTSTART and DTEND fields
-startTime, endTime = createStartAndEndTimes(timeString)
-startHour, startMinute = formatStartTime(startTime)
-dtStart = dt(2024, 1, 8, int(startHour), int(startMinute))
-startString = dtStart.strftime('%Y%m%dT%H%M%S')
+def createDtStrings(row):
+    timeString = finalFormattedRows[row][8]
+    print("this is the time: " + timeString)
+    startTime, endTime = createStartAndEndTimes(timeString)
+    startHour, startMinute = formatStartTime(startTime)
+    dtStart = dt(2024, 1, 8, int(startHour), int(startMinute))
+    startString = dtStart.strftime('%Y%m%dT%H%M%S')
+    endHour, endMinute = formatEndTime(endTime)
+    dtEnd = dt(2024, 1, 8, int(endHour), int(endMinute))
+    endString = dtEnd.strftime('%Y%m%dT%H%M%S')
+    return startString, endString
 
-endHour, endMinute = formatEndTime(endTime)
-dtEnd = dt(2024, 1, 8, int(endHour), int(endMinute))
-endString = dtEnd.strftime('%Y%m%dT%H%M%S')
 
-# create datetime string for UNTIL field, currently using hard coded end of
-# instruction date.
-untilDt = dt(2024, 3, 15, 23, 59)
-pacific = pytz.timezone("America/Los_Angeles")
-untilPacDt = pacific.localize(untilDt)
-untilUtcDt = untilPacDt.astimezone(pytz.utc)
-untilString = untilUtcDt.strftime('UNTIL=%Y%m%dT%H%M%SZ')
+def createRruleString(row):
+    # create datetime string for UNTIL field, currently using hard coded end of
+    # instruction date.
+    untilDt = dt(2024, 3, 15, 23, 59)
+    pacific = pytz.timezone("America/Los_Angeles")
+    untilPacDt = pacific.localize(untilDt)
+    untilUtcDt = untilPacDt.astimezone(pytz.utc)
+    untilString = untilUtcDt.strftime('UNTIL=%Y%m%dT%H%M%SZ')
 
-# create string for the BYDAY field
-formattedDays = formatDays(finalFormattedRows[0][7])
-byDayString = ','.join(formattedDays)
+    # create string for the BYDAY field
+    formattedDays = formatDays(finalFormattedRows[row][7])
+    byDayString = ','.join(formattedDays)
 
-# create final rruleString
-rruleString = "FREQ=WEEKLY;" + untilString + ";WKST=" + "SU" + ";BYDAY=" + byDayString
+    # create final rruleString
+    rruleString = "FREQ=WEEKLY;" + untilString + ";WKST=" + "SU" + ";BYDAY=" + byDayString
 
-# add all field information the lecture event
-lecture.name = finalFormattedRows[0][0] + " Lecture"
-lecture.created = dt.now(pytz.utc)
-lecture.extra.append(ContentLine(name="RRULE", value=rruleString))
-lecture.extra.append(ContentLine("DTSTART", {'TZID': ['America/Los_Angeles']}, startString))
-lecture.extra.append(ContentLine("DTEND", {'TZID': ['America/Los_Angeles']}, endString))
+    return rruleString
 
-c.events.add(lecture)
-
-with open('output.ics', 'w') as outputFile:
-        outputFile.writelines(c.serialize_iter())
-
+# TODO: find a way to label all rows
+# column 3 of every row contains the label
 
 # TODO: find a way to automate the creation of all events for ONE class
+courseNames = getCourseNames()
+courseRanges = {}
+for itrNum, course in enumerate(courseNames):
+    courseRanges[course] = range(courseCodeIndices[itrNum], courseCodeIndices[itrNum + 1])
+# iterate through every row in formattedRows, first check TYPE label
 
+for course in courseRanges:
+    for row in courseRanges[course]:
+        # col 3 = type information
+        if finalFormattedRows[row][3] == 'LE':
+            startString, endString = createDtStrings(row)
+            rruleString = createRruleString(row)
+            # add all field information the lecture event
+            lecture = Event()
+            lecture.name = finalFormattedRows[row][0] + " Lecture"
+            lecture.created = dt.now(pytz.utc)
+            lecture.extra.append(ContentLine(name="RRULE", value=rruleString))
+            lecture.extra.append(ContentLine("DTSTART", {'TZID': ['America/Los_Angeles']}, startString))
+            lecture.extra.append(ContentLine("DTEND", {'TZID': ['America/Los_Angeles']}, endString))
+            c.events.add(lecture)
 
+with open('newOutput.ics', 'w') as outputFile:
+        outputFile.writelines(c.serialize_iter())
