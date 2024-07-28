@@ -102,7 +102,7 @@ def getCourseNames():
         courseNames.append(finalFormattedRows[index][0])
     return courseNames
 
-print(getCourseNames())
+#print(getCourseNames())
 def printCsvFormat():        
     for row in finalFormattedRows:
         print(row)
@@ -144,7 +144,6 @@ def standardToMilitaryTime(timeToConvert):
 def formatStartTime(startTime):
     startHour = ''
     startMinute = ''
-    print(startTime)
     if startTime[-1] == 'p':
         startTime = standardToMilitaryTime(startTime)
         startHour = startTime[:-3]
@@ -153,8 +152,6 @@ def formatStartTime(startTime):
         startHour = startTime[:-4]
         startTime = startTime[:-1] #shave off 'a' for am start time classes
         startMinute = startTime[-2:]
-    print(startHour)
-    print(startMinute)
     return startHour, startMinute
 
 def formatEndTime(endTime):
@@ -174,25 +171,30 @@ def formatEndTime(endTime):
 # OUTPUT: string of WebReg days in .ics readable format
 def formatDays(days):
     formattedDays = []
+    currDay = ''
     for char in days:
-        if char == 'M':
+        currDay += char
+        if currDay == 'M':
             formattedDays.append('MO')
-        elif char == 'Tu':
+            currDay = ''
+        elif currDay == 'Tu':
             formattedDays.append('TU')
-        elif char == 'W':
-            formattedDays.append('WE')   
-        elif char == 'Th':
+            currDay = ''
+        elif currDay == 'W':
+            formattedDays.append('WE')
+            currDay = ''   
+        elif currDay == 'Th':
             formattedDays.append('TH')
-        elif char == 'F':
+            currDay = ''
+        elif currDay == 'F':
             formattedDays.append('FR')
+            currDay = ''
+
     return formattedDays
 
 # use .ics lib to create a calendar object in which events can go into
 c = Calendar()
-lecture = Event()
-discussion = Event()
-midtermOne = Event()
-midtermTwo = Event()
+
 
 # hard coded lecture name, and start/end time
 #lecture.name = finalFormattedRows[0][0] + " Lecture"
@@ -201,9 +203,10 @@ midtermTwo = Event()
 # create datetime strings for DTSTART and DTEND fields
 def createDtStrings(row):
     timeString = finalFormattedRows[row][8]
-    print("this is the time: " + timeString)
     startTime, endTime = createStartAndEndTimes(timeString)
     startHour, startMinute = formatStartTime(startTime)
+    # TODO: get the actual date creation parts of this function to another func
+    # in order to be able to use for the creation of test dt object
     dtStart = dt(2024, 1, 8, int(startHour), int(startMinute))
     startString = dtStart.strftime('%Y%m%dT%H%M%S')
     endHour, endMinute = formatEndTime(endTime)
@@ -230,17 +233,37 @@ def createRruleString(row):
 
     return rruleString
 
-# TODO: find a way to label all rows
-# column 3 of every row contains the label
-
+# INPUT: a row of course test (Midterm or Final) data
+# OUTPUT: formatted start and end DT objects for tests
+def testDTs(row):
+    rawData = finalFormattedRows[row][7]
+    timeString = finalFormattedRows[row][8]
+    # extract only date
+    rawData = rawData[1:]
+    year = int(rawData[7:])
+    day = int(rawData[4:6])
+    month = int(rawData[1:3])
+    # DTSTART;TZID=America/Los_Angeles:20240108T120000
+    # DTEND;TZID=America/Los_Angeles:20240108T125000
+    startTime, endTime = createStartAndEndTimes(timeString)
+    startHour, startMinute = formatStartTime(startTime)
+    endHour, endMinute = formatEndTime(endTime)
+    startDT = dt(year, month, day, int(startHour), int(startMinute))
+    endDT = dt(year, month, day, int(endHour), int(endMinute))
+    startString = startDT.strftime('%Y%m%dT%H%M%S')
+    endString = endDT.strftime('%Y%m%dT%H%M%S')
+    return startString, endString
 # TODO: find a way to automate the creation of all events for ONE class
 courseNames = getCourseNames()
 courseRanges = {}
+# add 1 to final index value in order to account for exclusive nature of range(Start, Stop)
+courseCodeIndices[len(courseCodeIndices) - 1] = courseCodeIndices[len(courseCodeIndices) - 1] + 1
 for itrNum, course in enumerate(courseNames):
     courseRanges[course] = range(courseCodeIndices[itrNum], courseCodeIndices[itrNum + 1])
-# iterate through every row in formattedRows, first check TYPE label
 
 for course in courseRanges:
+    #courseNamesItr += 1
+    courseName = ''
     for row in courseRanges[course]:
         # col 3 = type information
         if finalFormattedRows[row][3] == 'LE':
@@ -249,11 +272,42 @@ for course in courseRanges:
             # add all field information the lecture event
             lecture = Event()
             lecture.name = finalFormattedRows[row][0] + " Lecture"
+            courseName = finalFormattedRows[row][0]
             lecture.created = dt.now(pytz.utc)
             lecture.extra.append(ContentLine(name="RRULE", value=rruleString))
             lecture.extra.append(ContentLine("DTSTART", {'TZID': ['America/Los_Angeles']}, startString))
             lecture.extra.append(ContentLine("DTEND", {'TZID': ['America/Los_Angeles']}, endString))
             c.events.add(lecture)
 
+        if finalFormattedRows[row][3] == 'DI':
+            startString, endString = createDtStrings(row)
+            rruleString = createRruleString(row)
+            # add all field information the discussion event
+            discussion = Event()
+            discussion.name = courseName + " Discussion"
+            discussion.created = dt.now(pytz.utc)
+            discussion.extra.append(ContentLine(name="RRULE", value=rruleString))
+            discussion.extra.append(ContentLine("DTSTART", {'TZID': ['America/Los_Angeles']}, startString))
+            discussion.extra.append(ContentLine("DTEND", {'TZID': ['America/Los_Angeles']}, endString))
+            c.events.add(discussion)
+
+        if finalFormattedRows[row][3] == 'MI' or finalFormattedRows[row][3] == 'FI':
+            testType = finalFormattedRows[row][3]
+            startString, endString = createDtStrings(row)
+            startString, endString = testDTs(row)
+            test = Event()
+            if testType == 'MI':
+                test.name = courseName + " Midterm"
+            elif testType == 'FI':
+                test.name = courseName + " Final"
+            test.created = dt.now(pytz.utc)
+            test.extra.append(ContentLine("DTSTART", {'TZID': ['America/Los_Angeles']}, startString))
+            test.extra.append(ContentLine("DTEND", {'TZID': ['America/Los_Angeles']}, endString))
+            print('These are all the tests: ' + test.serialize())
+            c.events.add(test)
+        #print(finalFormattedRows[row])
+
+
+#printCsvFormat()
 with open('newOutput.ics', 'w') as outputFile:
         outputFile.writelines(c.serialize_iter())
