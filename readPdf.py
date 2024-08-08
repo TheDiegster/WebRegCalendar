@@ -7,14 +7,16 @@ from ics.grammar.parse import ContentLine
 # All the possible course codes at UCSD
 rawCourseCodes = ["AAPI", "AAS", "AESE", "AIP", "ANAR", "ANBI", "ANES", "ANSC", "ANTH", "ASTR", "AUD", "AWP", "BENG", "BGGN", "BGJC", "BGRD", "BGSE", "BIBC", "BICD", "BIEB", "BILD", "BIMM", "BIOM", "BIPN", "BISP", "BNFO", "CAT", "CCE", "CCS", "CENG", "CGS", "CHEM", "CHIN", "CLAS", "CLIN", "CLRE", "CLSS", "CLX", "CMM", "COGR", "COGS", "COMM", "CONT", "CSE", "CSS", "DDPM", "DERM", "DOC", "DSC", "DSE", "DSGN", "EAP", "ECE", "ECON", "EDS", "EIGH", "EMED", "ENG", "ENVR", "ERC", "ESYS", "ETHN", "ETIM", "EXPR", "FILM", "FMPH", "FPM", "GLBH", "GMST", "GPCO", "GPEC", "GPGN", "GPIM", "GPLA", "GPPA", "GPPS", "GSS", "HDP", "HDS", "HIAF", "HIEA", "HIEU", "HIGL", "HIGR", "HILA", "HILD", "HINE", "HISA", "HISC", "HITO", "HIUS", "HLAW", "HMNR", "HUM", "ICEP", "INTL", "IRLA", "JAPN", "JWSP", "LATI", "LAWS", "LHCO", "LIAB", "LIDS", "LIEO", "LIFR", "LIGM", "LIGN", "LIHI", "LIHL", "LIIT", "LIPO", "LISL", "LISP", "LTAF", "LTAM", "LTCH", "LTCO", "LTCS", "LTEA", "LTEN", "LTEU", "LTFR", "LTGK", "LTGM", "LTIT", "LTKO", "LTLA", "LTRU", "LTSP", "LTTH", "LTWL", "LTWR", "MAE", "MATH", "MATS", "MBC", "MCWP", "MDE", "MED", "MGT", "MGTA", "MGTF", "MGTP", "MMW", "MSED", "MSP", "MUIR", "MUS", "NANO", "NEU", "NEUG", "OBG", "OPTH", "ORTH", "PATH", "PEDS", "PH", "PHAR", "PHB", "PHIL", "PHLH", "PHYA", "PHYS", "POLI", "PSY", "PSYC", "RAD", "RELI", "REV", "RMAS", "RMED", "SE", "SEV", "SIO", "SIOB", "SIOC", "SIOG", "SOCE", "SOCG", "SOCI", "SOCL", "SOMC", "SOMI", "SPPH", "SPPS", "SURG", "SXTH", "SYN", "TDAC", "TDDE", "TDDM", "TDDR", "TDGE", "TDGR", "TDHD", "TDHT", "TDMV", "TDPF", "TDPR", "TDPW", "TDTR", "TKS", "TMC", "TWS", "UROL", "USP", "VIS", "WARR", "WCWP", "WES"]
 courseCodes = set(rawCourseCodes)
-reader = PdfReader("webregMain.pdf")
+#reader = PdfReader("webregMain.pdf")
+reader = PdfReader("SI2classes.pdf")
 page = reader.pages[0]
 rawData = page.extract_text(extraction_mode="layout", layout_mode_space_vertically=False, layout_mode_scale_weight=1)
 newlineCount = rawData.count('\n')
-rawRows = rawData.strip().split('\n')
+rawRows = rawData.split('\n')
 
+#print(rawData)
 # Only select rows containing course and schuedule information
-start_index = 4
+start_index = 4 #should be 4
 end_index = -1
 selectRows = rawRows[start_index:end_index]
 
@@ -45,7 +47,9 @@ for idx, row in enumerate(cleanedRows):
 
 lastRowIdx = len(cleanedRows)-1
 courseCodeIndices = courseCodeStartIndices + [lastRowIdx]
-
+with open('testOutput.txt', 'w') as file:
+    for row in selectRows:
+        print(row, file=file)
 #cols = ["Subject Course", "Title", "Section Code", "Type", "Instructor", "Grade Option", "Units", "Days", "Time", "BLDG", "Room", "Status", "Action"]
 finalFormattedRows = []
 for row in selectRows:
@@ -96,6 +100,7 @@ for row in selectRows:
         cleanCols.append(element.strip())
     finalFormattedRows.append(cleanCols)
 
+
 def getCourseNames():
     courseNames = []
     for index in courseCodeStartIndices:
@@ -108,7 +113,8 @@ def printCsvFormat():
         print(row)
 
 df = pd.DataFrame(finalFormattedRows)
-
+printPdfFormat()
+#printCsvFormat()
 # TODO: prompt user for beginning/end of instruction date
 # for now use hard coded start and end days
 
@@ -238,8 +244,11 @@ def createRruleString(row):
 def testDTs(row):
     rawData = finalFormattedRows[row][7]
     timeString = finalFormattedRows[row][8]
+    if rawData[0] == "S":
+        rawData = rawData[2:]
     # extract only date
-    rawData = rawData[1:]
+    else:
+        rawData = rawData[1:]
     year = int(rawData[7:])
     day = int(rawData[4:6])
     month = int(rawData[1:3])
@@ -308,6 +317,7 @@ for course in courseRanges:
         #print(finalFormattedRows[row])
 
 
-#printCsvFormat()
+printPdfFormat()
 with open('newOutput.ics', 'w') as outputFile:
         outputFile.writelines(c.serialize_iter())
+
