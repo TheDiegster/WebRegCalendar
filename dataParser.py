@@ -14,8 +14,8 @@ def printData(data):
 # All the possible course codes at UCSD
 rawCourseCodes = ["AAPI", "AAS", "AESE", "AIP", "ANAR", "ANBI", "ANES", "ANSC", "ANTH", "ASTR", "AUD", "AWP", "BENG", "BGGN", "BGJC", "BGRD", "BGSE", "BIBC", "BICD", "BIEB", "BILD", "BIMM", "BIOM", "BIPN", "BISP", "BNFO", "CAT", "CCE", "CCS", "CENG", "CGS", "CHEM", "CHIN", "CLAS", "CLIN", "CLRE", "CLSS", "CLX", "CMM", "COGR", "COGS", "COMM", "CONT", "CSE", "CSS", "DDPM", "DERM", "DOC", "DSC", "DSE", "DSGN", "EAP", "ECE", "ECON", "EDS", "EIGH", "EMED", "ENG", "ENVR", "ERC", "ESYS", "ETHN", "ETIM", "EXPR", "FILM", "FMPH", "FPM", "GLBH", "GMST", "GPCO", "GPEC", "GPGN", "GPIM", "GPLA", "GPPA", "GPPS", "GSS", "HDP", "HDS", "HIAF", "HIEA", "HIEU", "HIGL", "HIGR", "HILA", "HILD", "HINE", "HISA", "HISC", "HITO", "HIUS", "HLAW", "HMNR", "HUM", "ICEP", "INTL", "IRLA", "JAPN", "JWSP", "LATI", "LAWS", "LHCO", "LIAB", "LIDS", "LIEO", "LIFR", "LIGM", "LIGN", "LIHI", "LIHL", "LIIT", "LIPO", "LISL", "LISP", "LTAF", "LTAM", "LTCH", "LTCO", "LTCS", "LTEA", "LTEN", "LTEU", "LTFR", "LTGK", "LTGM", "LTIT", "LTKO", "LTLA", "LTRU", "LTSP", "LTTH", "LTWL", "LTWR", "MAE", "MATH", "MATS", "MBC", "MCWP", "MDE", "MED", "MGT", "MGTA", "MGTF", "MGTP", "MMW", "MSED", "MSP", "MUIR", "MUS", "NANO", "NEU", "NEUG", "OBG", "OPTH", "ORTH", "PATH", "PEDS", "PH", "PHAR", "PHB", "PHIL", "PHLH", "PHYA", "PHYS", "POLI", "PSY", "PSYC", "RAD", "RELI", "REV", "RMAS", "RMED", "SE", "SEV", "SIO", "SIOB", "SIOC", "SIOG", "SOCE", "SOCG", "SOCI", "SOCL", "SOMC", "SOMI", "SPPH", "SPPS", "SURG", "SXTH", "SYN", "TDAC", "TDDE", "TDDM", "TDDR", "TDGE", "TDGR", "TDHD", "TDHT", "TDMV", "TDPF", "TDPR", "TDPW", "TDTR", "TKS", "TMC", "TWS", "UROL", "USP", "VIS", "WARR", "WCWP", "WES"]
 courseCodes = set(rawCourseCodes)
-reader = PdfReader("/home/diegom/CSProjects/WebRegCalendarTestData/webregMain.pdf")
-#reader = PdfReader("/home/diegom/CSProjects/WebRegCalendarTestData/SI2classes.pdf")
+#reader = PdfReader("/home/diegom/CSProjects/WebRegCalendarTestData/webregMain.pdf")
+reader = PdfReader("/home/diegom/CSProjects/WebRegCalendarTestData/SI2classes.pdf")
 page = reader.pages[0]
 rawData = page.extract_text(extraction_mode="layout", layout_mode_space_vertically=False, layout_mode_scale_weight=1)
 newlineCount = rawData.count('\n')
@@ -238,6 +238,14 @@ def rEventDTs(row, startWeekday):
     offset = 0 
     if startWeekday == 'TU':
         offset = 1
+    elif startWeekday == 'W':
+        offset = 2
+    elif startWeekday == 'TH':
+        offset = 3
+    elif startWeekday == 'F':
+        offset = 4
+    elif startWeekday == 'SA':
+        offset = 5
     timeString = finalDataset[row][8]
     startTime, endTime = createStartAndEndTimes(timeString)
     startHour, startMinute = formatStartTime(startTime)
@@ -342,7 +350,6 @@ for course in courseRanges:
             test.extra.append(ContentLine("DTEND", {'TZID': ['America/Los_Angeles']}, endString))
             #print('These are all the tests: ' + test.serialize())
             c.events.add(test)
-        #print(finalDataset[row])
 
 with open('dataParserOutput.ics', 'w') as outputFile:
         outputFile.writelines(c.serialize_iter())
