@@ -428,4 +428,4 @@ def dataParser(pdfFile):
     printPdfFormat()
     printCsvFormat()
             
-dataParser('examplePDFs/rona.pdf')
+#dataParser('examplePDFs/example.pdf')
