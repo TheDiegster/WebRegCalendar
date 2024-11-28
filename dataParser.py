@@ -25,8 +25,6 @@ def processFaultyPdf(reader):
         modRow = re.sub(r'(\d{1,2}/\d{1,2}/\d{2},)', r'\n\1', modRow)
         modRow = re.sub(r'(Enrolled)', r' \1', modRow)
         selectRows.append(modRow)
-    # for row in selectRows:
-    #     print(row)
     return selectRows
 
 def dataParser(pdfFile):
@@ -61,7 +59,9 @@ def dataParser(pdfFile):
 
 
     # Determines if we have a schuedule with scheduling conflicts -> different row selections
-    schueduleConflictRegex = r'You have scheduling con.icts!'
+
+    # Note we need a condition that handles a single and multiple conflicts
+    schueduleConflictRegex = r'You have scheduling con.icts!|You have a scheduling con.ict!'
     conflictingSchuedPDF = False
     confSchuedIdx = None
     for idx, row in enumerate(rawRows):
@@ -70,7 +70,6 @@ def dataParser(pdfFile):
             conflictingSchuedPDF = True
             confSchuedIdx = idx
             break
-
     # Now run the search again either with good data or fixed data
     termAndYearRegex = r'-\s([A-Za-z\s\d]+)'
     termAndYearSearch = re.search(termAndYearRegex, rawRows[1])
@@ -101,9 +100,15 @@ def dataParser(pdfFile):
     # for the case where there are schueduling conflicts
     if conflictingSchuedPDF == True:
         end_index = confSchuedIdx
+        selectRows = rawRows[start_index:end_index]
     else:
-        end_index = -1
-    selectRows = rawRows[start_index:end_index]
+        # must also check if "act.ucsd.edu" is the last line, sometimes it's not
+        websiteStampRegex = r'act.ucsd.edu'
+        websiteStampSearch = re.search(websiteStampRegex, rawRows[-1])
+        if websiteStampSearch == None:
+            selectRows = rawRows[start_index:]
+        else:
+            selectRows = rawRows[start_index:end_index]
 
     def printPdfFormat():
         for item in selectRows:
@@ -419,13 +424,7 @@ def dataParser(pdfFile):
                 #print('These are all the tests: ' + test.serialize())
                 c.events.add(test)
 
-    #print(c.serialize())
     with open('dataParserOutput.ics', 'w') as outputFile:
             outputFile.writelines(c.serialize_iter())
-
-    #printData(rawRows)
-    #print(getCourseNames())
-    printPdfFormat()
-    printCsvFormat()
-            
-#dataParser('examplePDFs/example.pdf')
+        
+#dataParser('examplePDFs/iz.pdf')

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class = 'front-page'>
+        <h1>WebReg AutoCalendar</h1>
+        <h2>Class schedule pdf file to importable calendar file</h2>
+        <form action="" method="POST" enctype="multipart/form-data" id="uploadForm">
+            <input type="file" id="selectFile" name="webregFile" style="display: none; "accept="application/pdf">
+            <button type="button" onclick="document.getElementById('selectFile').click()">Insert PDF</button>
+        </form>
+        <script>
+            const selectFile = document.getElementById('selectFile')
+            const uploadForm = document.getElementById('uploadForm')
+            selectFile.addEventListener('change', e => {
+                uploadForm.submit();
+            })
+        </script>
+    </div>
+    <!-- <p> Hello, {{ name }}</p> -->
+    <!-- <script type="text/javascript" src="{{url_for('static', filename='index.js')}}"></script> -->
+</body>
+</html>
+
+<!-- Figure out how to make a header that is centered with large font and shadow lighting effect -->
+
